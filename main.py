@@ -1,15 +1,15 @@
 import os
 import argparse
+
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
 
 def main():
-
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
-    if api_key == None:
+    if not api_key:
         raise RuntimeError("No valid API key found")
     client = genai.Client(api_key=api_key)
     
@@ -21,9 +21,10 @@ def main():
     verbose_flag = args.verbose
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash", contents=messages
+        model="gemini-2.5-flash", 
+        contents=messages,
         )
-    if response.usage_metadata == None:
+    if not response.usage_metadata:
         raise RuntimeError("usage_metadata == None. API request likely failed")
     elif verbose_flag == True:
         print(f"User prompt: {args.user_prompt}")
@@ -31,7 +32,7 @@ def main():
         response_tokens = response.usage_metadata.candidates_token_count
         print(f"Prompt tokens: {prompt_tokens}")
         print(f"Response tokens: {response_tokens}")
-    
+    print("Response:")
     print(response.text)
 
 
