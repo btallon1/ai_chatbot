@@ -1,5 +1,4 @@
 import os
-import io
 
 from config import MAX_CHARS
 
