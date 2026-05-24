@@ -1,11 +1,13 @@
 import os
 import argparse
+import sys
 import call_function
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from prompts import system_prompt
+from config import MAX_ITERS
 
 
 def main():
@@ -26,12 +28,23 @@ def main():
     if args.verbose:
         print(f"User prompt: {args.user_prompt}\n")
 
-    generate_content(client, messages, args.verbose)
+    for _ in range(MAX_ITERS):
+        try:
+            final_response = generate_content(client, messages, args.verbose)
+            if final_response:
+                print("Final response:")
+                print(final_response)
+                return
+        except Exception as e:
+            print(f"Error in generate_content: {e}")
+    
+    print(f"Maximum iterations ({MAX_ITERS}) reached")
+    sys.exit(1)
 
 
 def generate_content(
         client: genai.Client, messages: list[types.Content], verbose: bool
-) -> None:
+) -> str |  None:
     response = client.models.generate_content(
         model="gemini-2.5-flash", 
         contents=messages,
@@ -47,11 +60,14 @@ def generate_content(
         response_tokens = response.usage_metadata.candidates_token_count
         print(f"Prompt tokens: {prompt_tokens}")
         print(f"Response tokens: {response_tokens}")
+
+    if response.candidates:
+        for candidate in response.candidates:
+            if candidate.content:
+                messages.append(candidate.content)
     
     if not response.function_calls:
-        print("Response:")
-        print(response.text)
-        return
+        return response.text
     
     function_responses: list[types.Part] = []
     for function_call in response.function_calls:
@@ -68,6 +84,8 @@ def generate_content(
         if verbose:
             print(f"-> {function_call_result.parts[0].function_response.response}")
         function_responses.append(function_call_result.parts[0])
+    
+    messages.append(types.Content(role="user", parts=function_responses))
 
 
 if __name__ == "__main__":
